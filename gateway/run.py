@@ -20,6 +20,7 @@ import re
 import sys
 import signal
 import threading
+import tempfile
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from datetime import datetime
@@ -1793,8 +1794,21 @@ class GatewayRunner:
                 user_config["model"]["default"] = new_model
                 if provider_changed:
                     user_config["model"]["provider"] = target_provider
-                with open(config_path, 'w', encoding="utf-8") as f:
-                    yaml.dump(user_config, f, default_flow_style=False, sort_keys=False)
+                fd, tmp_path = tempfile.mkstemp(
+                    dir=str(config_path.parent), suffix='.tmp', prefix='.config_'
+                )
+                try:
+                    with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                        yaml.dump(user_config, f, default_flow_style=False, sort_keys=False)
+                        f.flush()
+                        os.fsync(f.fileno())
+                    os.replace(tmp_path, config_path)
+                except BaseException:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                    raise
             except Exception as e:
                 return f"⚠️ Failed to save model change: {e}"
 
@@ -1919,8 +1933,21 @@ class GatewayRunner:
                 if "agent" not in config or not isinstance(config.get("agent"), dict):
                     config["agent"] = {}
                 config["agent"]["system_prompt"] = ""
-                with open(config_path, "w") as f:
-                    yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+                fd, tmp_path = tempfile.mkstemp(
+                    dir=str(config_path.parent), suffix='.tmp', prefix='.config_'
+                )
+                try:
+                    with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+                        f.flush()
+                        os.fsync(f.fileno())
+                    os.replace(tmp_path, config_path)
+                except BaseException:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                    raise
             except Exception as e:
                 return f"⚠️ Failed to save personality change: {e}"
             self._ephemeral_system_prompt = ""
@@ -1933,8 +1960,21 @@ class GatewayRunner:
                 if "agent" not in config or not isinstance(config.get("agent"), dict):
                     config["agent"] = {}
                 config["agent"]["system_prompt"] = new_prompt
-                with open(config_path, 'w', encoding="utf-8") as f:
-                    yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+                fd, tmp_path = tempfile.mkstemp(
+                    dir=str(config_path.parent), suffix='.tmp', prefix='.config_'
+                )
+                try:
+                    with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+                        f.flush()
+                        os.fsync(f.fileno())
+                    os.replace(tmp_path, config_path)
+                except BaseException:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                    raise
             except Exception as e:
                 return f"⚠️ Failed to save personality change: {e}"
 
@@ -2024,8 +2064,21 @@ class GatewayRunner:
                 with open(config_path, encoding="utf-8") as f:
                     user_config = yaml.safe_load(f) or {}
             user_config[env_key] = chat_id
-            with open(config_path, 'w', encoding="utf-8") as f:
-                yaml.dump(user_config, f, default_flow_style=False)
+            fd, tmp_path = tempfile.mkstemp(
+                dir=str(config_path.parent), suffix='.tmp', prefix='.config_'
+            )
+            try:
+                with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                    yaml.dump(user_config, f, default_flow_style=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_path, config_path)
+            except BaseException:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
+                raise
             # Also set in the current environment so it takes effect immediately
             os.environ[env_key] = str(chat_id)
         except Exception as e:
